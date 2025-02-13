@@ -1,0 +1,22 @@
+[
+    {"name": "Node_A", "description": "I'm an arithmetic agent specialized in performing complex numerical calculations and solving advanced mathematical problems.", "reputation_score": 85},
+    {"name": "Node_B", "description": "I'm a general reasoning agent with expertise in logical analysis, creative problem solving, and puzzle solving.", "reputation_score": 73},
+    {"name": "Node_C", "description": "I'm an agent with access to advanced data analysis capabilities and a specialized database for statistical and trend information.", "reputation_score": 92},
+    {"name": "Node_D", "description": "I'm an agent specialized in natural language processing and text analytics, excelling in understanding and generating human language.", "reputation_score": 77},
+    {"name": "Node_E", "description": "I'm an agent with expertise in financial analysis, capable of performing market trend evaluations and risk assessments.", "reputation_score": 68},
+    {"name": "Node_F", "description": "I'm a scientific research agent skilled in physics, chemistry, and biology problem solving with detailed scientific analysis.", "reputation_score": 89},
+    {"name": "Node_G", "description": "I'm an agent with strong computer science and programming skills, proficient in coding, debugging, and algorithm optimization.", "reputation_score": 95},
+    {"name": "Node_H", "description": "I'm an agent specializing in historical analysis and research, with a deep understanding of historical events and contexts.", "reputation_score": 60},
+    {"name": "Node_I", "description": "I'm an agent skilled in geospatial analysis and mapping, able to process and interpret geographic data effectively.", "reputation_score": 80},
+    {"name": "Node_J", "description": "I'm an agent specialized in image processing and computer vision tasks, capable of analyzing visual data and patterns.", "reputation_score": 85},
+    {"name": "Node_K", "description": "I'm an agent that excels in logic puzzles and recreational mathematics, offering unique insights and creative solutions.", "reputation_score": 90},
+    {"name": "Node_L", "description": "I'm an agent with expertise in machine learning and AI, capable of building predictive models and data-driven insights.", "reputation_score": 97},
+    {"name": "Node_M", "description": "I'm an agent with strong cybersecurity skills, adept at threat analysis and digital defense strategies.", "reputation_score": 88},
+    {"name": "Node_N", "description": "I'm an agent proficient in software engineering and system architecture, focusing on designing scalable solutions.", "reputation_score": 93},
+    {"name": "Node_O", "description": "I'm an agent specialized in medical research and healthcare analytics, offering insights based on clinical data.", "reputation_score": 76},
+    {"name": "Node_P", "description": "I'm an agent with expertise in environmental science, able to analyze ecological data and sustainability issues.", "reputation_score": 70},
+    {"name": "Node_Q", "description": "I'm an agent with advanced linguistic capabilities, specializing in translation, sentiment analysis, and language modeling.", "reputation_score": 84},
+    {"name": "Node_R", "description": "I'm an agent skilled in robotics and automation, offering solutions related to mechanical and electronic systems.", "reputation_score": 78},
+    {"name": "Node_S", "description": "I'm an agent focused on legal analysis and regulatory compliance, providing insights on laws and policies.", "reputation_score": 65},
+    {"name": "Node_T", "description": "I'm an agent with creative design and multimedia skills, capable of generating innovative visual and artistic content.", "reputation_score": 91}
+]
