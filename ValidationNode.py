@@ -5,7 +5,7 @@ class ValidationNode:
     def __init__(self, name):
         self.name = name
 
-    def agent_as_a_judge(self, task, response):
+    def agent_as_a_judge(self, task, response, context):
         """
         Implements the Agent-as-a-Judge framework for evaluating agentic responses.
         - Provides intermediate feedback.
@@ -25,6 +25,7 @@ class ValidationNode:
             "\n"
             f"Task: {task}\n"
             f"Response: {json.dumps(response, indent=2)}\n\n"
+            f"Based on the following previous context:\n{context}\n"
             "### Evaluation Output:\n"
             "Return a structured RAW JSON TEXT (without the word 'json' at the beginning)  with the following fields:\n"
             "{\n"
@@ -67,12 +68,12 @@ class ValidationNode:
                 "improvement_suggestions": "Evaluation failed due to an error."
             }
 
-    def validate_answer(self, task, response):
+    def validate_answer(self, task, response, context):
         """
         Uses the Agent-as-a-Judge framework to validate an answer.
         Returns a structured assessment with scores and improvement feedback.
         """
-        evaluation = self.agent_as_a_judge(task, response)
+        evaluation = self.agent_as_a_judge(task, response, context)
 
         # Compute an aggregated score based on all evaluation metrics
         avg_score = (

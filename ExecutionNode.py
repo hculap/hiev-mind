@@ -42,8 +42,8 @@ class ExecutionNode:
             # Attempt to parse the expected JSON output.
             parsed_result = json.loads(result)
             # Log the detailed reasoning for debugging purposes.
-            print(f"[{self.name}] Chain-of-Thought: {parsed_result.get('chain_of_thought', 'N/A')}")
-            print(f"[{self.name}] Final Answer: {parsed_result.get('final_answer', 'N/A')}")
+            # print(f"[{self.name}] Chain-of-Thought: {parsed_result.get('chain_of_thought', 'N/A')}")
+            # print(f"[{self.name}] Final Answer: {parsed_result.get('final_answer', 'N/A')}")
             return parsed_result
         except Exception as e:
             error_msg = f"Error processing task: {e}"

@@ -19,7 +19,12 @@ def main():
     # Create validation nodes
     validation_nodes = [
         ValidationNode("Validator_1"),
-        ValidationNode("Validator_2")
+        ValidationNode("Validator_2"),
+        ValidationNode("Validator_3"),
+        ValidationNode("Validator_4"),
+        ValidationNode("Validator_5"),
+        ValidationNode("Validator_6"),
+        ValidationNode("Validator_7"),
     ]
     
     manager = ManagingNode(execution_nodes, validation_nodes)

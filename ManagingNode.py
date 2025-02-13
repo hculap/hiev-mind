@@ -1,6 +1,8 @@
 import json
+import string
 from config import DEFAULT_MODEL, client
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
 # ---------------------------
 # Agent Manager
 # ---------------------------
@@ -18,7 +20,7 @@ class ManagingNode:
             "Decompose the following complex task into clear, base-level tasks that can be solved by specialized AI agents. "
             "For each task, provide an 'id' (e.g., T1, T2, ...), a 'task' description, and a list of 'dependencies' (other task IDs that must be completed first). "
             "Tasks that can be performed concurrently should have an empty dependencies list. "
-            "Return only a RAW JSON TEXT (without 'json' text at the beggining) array of objects with keys 'id', 'task', and 'dependencies'.\n\n"
+            "Return only a RAW JSON TEXT (without 'json' text at the beginning) array of objects with keys 'id', 'task', and 'dependencies'.\n\n"
             f"Complex Task: {complex_task}"
         )
         print("\n[Manager] Decomposing the complex task into dependent subtasks...\n")
@@ -82,7 +84,9 @@ class ManagingNode:
         Prioritizes agents based on their description match and reputation score.
         Returns a tuple (list of chosen nodes, expected response format).
         """
-        agents_info = "\n".join([f"{node.name}: {node.description} (Reputation score: {node.reputation_score})" for node in self.execution_nodes])
+        agents_info = "\n".join(
+            [f"{node.name}: {node.description} (Reputation score: {node.reputation_score})" for node in self.execution_nodes]
+        )
 
         prompt = (
             "You are an expert in delegating tasks to AI agents. Given the subtask and the list of available agents with their capabilities and reputation scores, "
@@ -130,24 +134,24 @@ class ManagingNode:
                 final_score = (match_score * 0.7) + (reputation_weight * 0.3)  # Weighted scoring
                 scored_nodes.append((final_score, node))
 
-            # Sort nodes by final weighted score
+            # Sort nodes by final weighted score and select the top agents
             scored_nodes.sort(key=lambda x: x[0], reverse=True)
-
-            # Select top agents
             chosen_nodes = [node for _, node in scored_nodes[:num_agents]]
-
             expected_format = "json"
             return chosen_nodes, expected_format
-        
+
     def process_single_task(self, task_obj, context):
         """
         Processes a single subtask with immediate validation and iterative self-critique if needed.
-        Retries up to max_attempts to obtain a valid response.
+        It uses validators’ scores as votes: each validator’s score is counted and averaged.
+        If no response (or improved response) obtains an average score above the threshold,
+        the task is reattempted (up to max_attempts).
         Returns a tuple: (agent_name, final_response, average_validation_score).
         """
         max_attempts = 3
         threshold = 7  # Acceptance threshold for average validation score
         best_response = None
+        best_avg_score = -1
         attempt = 0
 
         while attempt < max_attempts:
@@ -155,11 +159,13 @@ class ManagingNode:
             print(f"[Manager] Processing subtask {task_obj['id']} (attempt {attempt})")
             nodes, expected_format = self.assign_execution_nodes(task_obj["task"])
 
-            # Execute the task concurrently for the assigned agents.
-            responses = []  # list of tuples: (agent, response_json)
+            # Execute the subtask concurrently across the chosen execution nodes.
+            responses = []  # List of tuples: (agent_node, response)
             with ThreadPoolExecutor(max_workers=len(nodes)) as executor:
-                future_to_node = {executor.submit(node.process_task, task_obj["task"], expected_format, context): node
-                                  for node in nodes}
+                future_to_node = {
+                    executor.submit(node.process_task, task_obj["task"], expected_format, context): node
+                    for node in nodes
+                }
                 for future in as_completed(future_to_node):
                     node = future_to_node[future]
                     try:
@@ -168,68 +174,77 @@ class ManagingNode:
                     except Exception as e:
                         print(f"[Manager] Error processing task {task_obj['id']} by {node.name}: {e}")
 
-            # Validate each response concurrently.
-            validated_results = []  # list of tuples: (agent_name, response, avg_score)
+            # Validate each response concurrently using all validators.
+            validated_results = []  # List of tuples: (agent_node, response, avg_score)
             for node, resp in responses:
-                scores = []
+                votes = []
                 with ThreadPoolExecutor(max_workers=len(self.validation_nodes)) as executor:
                     future_to_validator = {
-                        executor.submit(validator.validate_answer, task_obj["task"], resp): validator
+                        executor.submit(validator.validate_answer, task_obj["task"], resp, context): validator
                         for validator in self.validation_nodes
                     }
                     for future in as_completed(future_to_validator):
                         validator = future_to_validator[future]
                         try:
-                            _, _, score = future.result()
-                            scores.append(score)
+                            # Expecting each validator to return a tuple where the third element is the score.
+                            result_tuple = future.result()
+                            score = result_tuple[2] if len(result_tuple) >= 3 else result_tuple[1]
+                            votes.append(score)
                         except Exception as e:
                             print(f"[Manager] Validation error for task {task_obj['id']} by {validator.name}: {e}")
-                            scores.append(0)
-                if scores:
-                    avg_score = sum(scores) / len(scores)
-                    validated_results.append((node.name, resp, avg_score))
+                            votes.append(0)
+                if votes:
+                    avg_score = sum(votes) / len(votes)
+                    validated_results.append((node, resp, avg_score))
+                    print(f"[Manager] Agent {node.name} obtained average validation score: {avg_score}")
+                    if avg_score > best_avg_score:
+                        best_avg_score = avg_score
+                        best_response = (node, resp, avg_score)
 
             if validated_results:
                 best_candidate = max(validated_results, key=lambda x: x[2])
-                print(f"[Manager] Best candidate for subtask {task_obj['id']} on attempt {attempt}: "
-                      f"Agent {best_candidate[0]} with average score {best_candidate[2]}")
                 if best_candidate[2] >= threshold:
-                    best_response = best_candidate
-                    break
+                    print(f"[Manager] Best candidate for subtask {task_obj['id']} on attempt {attempt}: "
+                          f"Agent {best_candidate[0].name} with average score {best_candidate[2]}")
+                    return best_candidate[0].name, best_candidate[1], best_candidate[2]
                 else:
-                    print(f"[Manager] Response did not meet threshold {threshold}. Initiating self-critique and improvement...")
-                    # Let the best candidate reprocess the task with an additional self-critique instruction.
-                    node = next((n for n in nodes if n.name == best_candidate[0]), None)
-                    if node:
-                        improved_context = context + "\nPlease review your previous reasoning and final answer, identify any weaknesses, and provide an improved version."
-                        improved_resp = node.process_task(task_obj["task"], expected_format, improved_context)
-                        # Validate the improved response.
-                        scores = []
-                        with ThreadPoolExecutor(max_workers=len(self.validation_nodes)) as executor:
-                            future_to_validator = {
-                                executor.submit(validator.validate_answer, task_obj["task"], improved_resp): validator
-                                for validator in self.validation_nodes
-                            }
-                            for future in as_completed(future_to_validator):
-                                try:
-                                    _, score = future.result()
-                                    scores.append(score)
-                                except Exception as e:
-                                    scores.append(0)
-                        if scores:
-                            avg_score = sum(scores) / len(scores)
-                            validated_results.append((node.name, improved_resp, avg_score))
-                            if avg_score >= threshold:
-                                best_response = (node.name, improved_resp, avg_score)
-                                break
+                    print(f"[Manager] None of the responses for subtask {task_obj['id']} met the threshold of {threshold}.")
+                    # Instruct the best candidate to reprocess with self-critique instructions.
+                    node = best_candidate[0]
+                    improved_context = context + "\nPlease review your previous reasoning and final answer, identify any weaknesses, and provide an improved version."
+                    improved_resp = node.process_task(task_obj["task"], expected_format, improved_context)
+                    # Validate the improved response.
+                    votes = []
+                    with ThreadPoolExecutor(max_workers=len(self.validation_nodes)) as executor:
+                        future_to_validator = {
+                            executor.submit(validator.validate_answer, task_obj["task"], improved_resp, context): validator
+                            for validator in self.validation_nodes
+                        }
+                        for future in as_completed(future_to_validator):
+                            try:
+                                result_tuple = future.result()
+                                score = result_tuple[2] if len(result_tuple) >= 3 else result_tuple[1]
+                                votes.append(score)
+                            except Exception as e:
+                                print(f"[Manager] Validation error for improved response for task {task_obj['id']}: {e}")
+                                votes.append(0)
+                    if votes:
+                        avg_score = sum(votes) / len(votes)
+                        print(f"[Manager] Improved response got average validation score: {avg_score}")
+                        if avg_score >= threshold:
+                            return node.name, improved_resp, avg_score
+                        else:
+                            print(f"[Manager] Improved response still did not meet threshold. Retrying...")
             else:
                 print(f"[Manager] No valid responses received for subtask {task_obj['id']} on attempt {attempt}.")
 
-        if best_response is None and validated_results:
-            best_response = max(validated_results, key=lambda x: x[2])
-        if best_response is None:
-            best_response = ("NoAgent", {"chain_of_thought": "", "final_answer": "No valid response obtained"}, 0)
-        return best_response
+        # After exhausting attempts, return the best available response (even if below threshold)
+        if best_response:
+            print(f"[Manager] Returning best available response for subtask {task_obj['id']} with average score {best_avg_score}")
+            return best_response[0].name, best_response[1], best_avg_score
+        else:
+            print(f"[Manager] No valid response obtained for subtask {task_obj['id']}.")
+            return "NoAgent", {"chain_of_thought": "", "final_answer": "No valid response obtained"}, 0
 
     def analyze_additional_steps(self, subtask_id, subtask_text, result):
         """
@@ -238,13 +253,13 @@ class ManagingNode:
         """
         prompt = (
             "You are an expert analyst. Based on the validated result of a subtask, determine whether any additional steps are required "
-            "to ensure the overall solution is complete and correct. If additional steps are needed, return a RAW JSON TEXT (without 'json' text at the beggining) array of objects, "
+            "to ensure the overall solution is complete and correct. If additional steps are needed, return a RAW JSON TEXT (without 'json' text at the beginning) array of objects, "
             "each with the keys: 'id' (a unique identifier, e.g., 'A1'), 'task' (description of the additional step), and 'blocking' (a boolean indicating if the step is crucial). "
             "If no additional steps are needed, return an empty array.\n\n"
             f"Subtask ID: {subtask_id}\n"
             f"Subtask: {subtask_text}\n"
             f"Validated Result: {json.dumps(result)}\n\n"
-            "Return only the RAW JSON TEXT (without 'json' text at the beggining) array."
+            "Return only the RAW JSON TEXT (without 'json' text at the beginning) array."
         )
         print(f"[Manager] Analyzing additional steps for subtask {subtask_id}...")
         try:
