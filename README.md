@@ -23,7 +23,7 @@ Hiev-Mind is a modular AI agent network simulation that leverages the OpenAI API
 Hiev-Mind simulates an AI agent network in which:
 - **Execution Nodes** perform specialized tasks (e.g., arithmetic, reasoning, data analysis).
 - **Validation Nodes** assess the quality of responses using an Agent-as-a-Judge framework.
-- A **Managing Node** orchestrates the task delegation, dependency management, and result synthesis by:
+- **Managing Node** orchestrates the task delegation, dependency management, and result synthesis by:
   - Decomposing a complex task into subtasks.
   - Assigning suitable execution nodes based on task requirements.
   - Validating agent responses and iteratively refining outputs.
@@ -62,30 +62,37 @@ hiev-mind/
    ```bash
    git clone https://github.com/yourusername/hiev-mind.git
    cd hiev-mind
+   ```
 
-	2.	Create and Activate a Virtual Environment:
+2.	Create and Activate a Virtual Environment:
 
-python -m venv venv
-source venv/bin/activate   # On Windows use: venv\Scripts\activate
+    ```bash
+    python -m venv venv
+    source venv/bin/activate   # On Windows use: venv\Scripts\activate
+    ```
 
 
-	3.	Install Dependencies:
-Hiev-Mind requires the OpenAI Python client. Install it using pip:
+3.	Install Dependencies:
 
-pip install openai
+    ```bash
+    # Hiev-Mind requires the OpenAI Python client. Install it using pip
+    pip install openai
+    ```
 
-Usage
-	1.	Set the OpenAI API Key:
-Make sure to set your OpenAI API key as an environment variable:
+    Usage
+	
+    1.	Set the OpenAI API Key:
 
-export OPENAI_API_KEY='your-openai-api-key'
-
+    ```bash
+    #  Make sure to set your OpenAI API key as an environment variable
+    export OPENAI_API_KEY='your-openai-api-key'
+    ```
 
 	2.	Run the Simulation:
-Execute the main script:
-
-python main.py
-
+    ```bash
+    # Execute the main script
+    python main.py
+    ```
 
 	3.	Enter a Complex Task:
 When prompted, input a complex computational or reasoning task. The system will decompose the task, delegate subtasks to specialized agents, validate the responses, and finally synthesize a comprehensive answer.
