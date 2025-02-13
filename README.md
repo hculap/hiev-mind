@@ -45,13 +45,13 @@ Hiev-Mind simulates an AI agent network in which:
 ## Directory Structure
 
 hiev-mind/
-─ config.py                # API configuration and default settings
-─ ExecutionNode.py         # Defines the ExecutionNode class for processing tasks
-─ structure.py             # Utility for scanning directory structure and text files (optional)
-─ ManagingNode.py          # Manages task delegation, validation, and synthesis
-─ execution_nodes.json     # JSON configuration for available execution nodes
-─ main.py                  # Entry point for running the simulation
-─ ValidationNode.py        # Defines the ValidationNode class for evaluating responses
+- config.py                # API configuration and default settings
+- ExecutionNode.py         # Defines the ExecutionNode class for processing tasks
+- structure.py             # Utility for scanning directory structure and text files (optional)
+- ManagingNode.py          # Manages task delegation, validation, and synthesis
+- execution_nodes.json     # JSON configuration for available execution nodes
+- main.py                  # Entry point for running the simulation
+- ValidationNode.py        # Defines the ValidationNode class for evaluating responses
 
 ---
 
