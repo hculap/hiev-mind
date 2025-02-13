@@ -1,15 +1,15 @@
 import json
 import string
-from config import DEFAULT_MODEL, client
+from config import DEFAULT_MODEL, client, VALIDATORS_COUNT
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import random 
 
 # ---------------------------
 # Agent Manager
 # ---------------------------
 class ManagingNode:
-    def __init__(self, execution_nodes, validation_nodes):
+    def __init__(self, execution_nodes):
         self.execution_nodes = execution_nodes
-        self.validation_nodes = validation_nodes
 
     def analyze_task(self, complex_task):
         """
@@ -141,13 +141,6 @@ class ManagingNode:
             return chosen_nodes, expected_format
 
     def process_single_task(self, task_obj, context):
-        """
-        Processes a single subtask with immediate validation and iterative self-critique if needed.
-        It uses validators’ scores as votes: each validator’s score is counted and averaged.
-        If no response (or improved response) obtains an average score above the threshold,
-        the task is reattempted (up to max_attempts).
-        Returns a tuple: (agent_name, final_response, average_validation_score).
-        """
         max_attempts = 3
         threshold = 7  # Acceptance threshold for average validation score
         best_response = None
@@ -160,7 +153,7 @@ class ManagingNode:
             nodes, expected_format = self.assign_execution_nodes(task_obj["task"])
 
             # Execute the subtask concurrently across the chosen execution nodes.
-            responses = []  # List of tuples: (agent_node, response)
+            responses = []
             with ThreadPoolExecutor(max_workers=len(nodes)) as executor:
                 future_to_node = {
                     executor.submit(node.process_task, task_obj["task"], expected_format, context): node
@@ -174,24 +167,23 @@ class ManagingNode:
                     except Exception as e:
                         print(f"[Manager] Error processing task {task_obj['id']} by {node.name}: {e}")
 
-            # Validate each response concurrently using all validators.
-            validated_results = []  # List of tuples: (agent_node, response, avg_score)
+            # Validate each response concurrently using execution nodes.
+            validated_results = []
             for node, resp in responses:
                 votes = []
-                with ThreadPoolExecutor(max_workers=len(self.validation_nodes)) as executor:
+                validators = self.execution_nodes if len(self.execution_nodes) <= VALIDATORS_COUNT else random.sample(self.execution_nodes, VALIDATORS_COUNT)
+                with ThreadPoolExecutor(max_workers=len(validators)) as executor:
                     future_to_validator = {
-                        executor.submit(validator.validate_answer, task_obj["task"], resp, context): validator
-                        for validator in self.validation_nodes
+                        executor.submit(exec_node.validate_response, task_obj["task"], resp, context): exec_node
+                        for exec_node in self.execution_nodes
                     }
                     for future in as_completed(future_to_validator):
-                        validator = future_to_validator[future]
                         try:
-                            # Expecting each validator to return a tuple where the third element is the score.
                             result_tuple = future.result()
-                            score = result_tuple[2] if len(result_tuple) >= 3 else result_tuple[1]
+                            score = result_tuple[2]
                             votes.append(score)
                         except Exception as e:
-                            print(f"[Manager] Validation error for task {task_obj['id']} by {validator.name}: {e}")
+                            print(f"[Manager] Validation error for task {task_obj['id']}: {e}")
                             votes.append(0)
                 if votes:
                     avg_score = sum(votes) / len(votes)
@@ -209,21 +201,20 @@ class ManagingNode:
                     return best_candidate[0].name, best_candidate[1], best_candidate[2]
                 else:
                     print(f"[Manager] None of the responses for subtask {task_obj['id']} met the threshold of {threshold}.")
-                    # Instruct the best candidate to reprocess with self-critique instructions.
                     node = best_candidate[0]
                     improved_context = context + "\nPlease review your previous reasoning and final answer, identify any weaknesses, and provide an improved version."
                     improved_resp = node.process_task(task_obj["task"], expected_format, improved_context)
-                    # Validate the improved response.
                     votes = []
-                    with ThreadPoolExecutor(max_workers=len(self.validation_nodes)) as executor:
+                    validators = self.execution_nodes if len(self.execution_nodes) <= VALIDATORS_COUNT else random.sample(self.execution_nodes, VALIDATORS_COUNT)
+                    with ThreadPoolExecutor(max_workers=len(validators)) as executor:
                         future_to_validator = {
-                            executor.submit(validator.validate_answer, task_obj["task"], improved_resp, context): validator
-                            for validator in self.validation_nodes
+                            executor.submit(exec_node.validate_response, task_obj["task"], improved_resp, context): exec_node
+                            for exec_node in self.execution_nodes
                         }
                         for future in as_completed(future_to_validator):
                             try:
                                 result_tuple = future.result()
-                                score = result_tuple[2] if len(result_tuple) >= 3 else result_tuple[1]
+                                score = result_tuple[2]
                                 votes.append(score)
                             except Exception as e:
                                 print(f"[Manager] Validation error for improved response for task {task_obj['id']}: {e}")
@@ -238,7 +229,6 @@ class ManagingNode:
             else:
                 print(f"[Manager] No valid responses received for subtask {task_obj['id']} on attempt {attempt}.")
 
-        # After exhausting attempts, return the best available response (even if below threshold)
         if best_response:
             print(f"[Manager] Returning best available response for subtask {task_obj['id']} with average score {best_avg_score}")
             return best_response[0].name, best_response[1], best_avg_score

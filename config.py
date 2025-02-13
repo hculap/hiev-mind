@@ -13,3 +13,5 @@ DEFAULT_MODEL = "gpt-4o"
 
 # In our code, we refer to the openai module as our client.
 client = openai
+
+VALIDATORS_COUNT = 4

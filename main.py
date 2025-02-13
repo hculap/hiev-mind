@@ -16,18 +16,7 @@ def main():
     # Load execution nodes from JSON
     execution_nodes = load_execution_nodes()
 
-    # Create validation nodes
-    validation_nodes = [
-        ValidationNode("Validator_1"),
-        ValidationNode("Validator_2"),
-        ValidationNode("Validator_3"),
-        ValidationNode("Validator_4"),
-        ValidationNode("Validator_5"),
-        ValidationNode("Validator_6"),
-        ValidationNode("Validator_7"),
-    ]
-    
-    manager = ManagingNode(execution_nodes, validation_nodes)
+    manager = ManagingNode(execution_nodes)
     
     print("Enter a complex computational task: ")
     complex_task = input().strip()
