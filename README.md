@@ -1,6 +1,6 @@
-# Hiev-Mind: AI Agent Network Simulation
+# Hive-Mind: AI Agent Network Simulation
 
-Hiev-Mind is a modular AI agent network simulation that leverages the OpenAI API to perform complex computational tasks through enhanced reasoning, task decomposition, and iterative self-improvement. The project demonstrates how multiple specialized AI agents (execution nodes) and evaluation agents (validation nodes) can collaborate to solve challenging tasks by decomposing them into manageable subtasks, processing each with specialized expertise, and synthesizing a final, coherent answer.
+Hive-Mind is a modular AI agent network simulation that leverages the OpenAI API to perform complex computational tasks through enhanced reasoning, task decomposition, and iterative self-improvement. The project demonstrates how multiple specialized AI agents (execution nodes) and evaluation agents (validation nodes) can collaborate to solve challenging tasks by decomposing them into manageable subtasks, processing each with specialized expertise, and synthesizing a final, coherent answer.
 
 ---
 
@@ -20,7 +20,7 @@ Hiev-Mind is a modular AI agent network simulation that leverages the OpenAI API
 
 ## Overview
 
-Hiev-Mind simulates an AI agent network in which:
+Hive-Mind simulates an AI agent network in which:
 - **Execution Nodes** perform specialized tasks (e.g., arithmetic, reasoning, data analysis).
 - **Validation Nodes** assess the quality of responses using an Agent-as-a-Judge framework.
 - **Managing Node** orchestrates the task delegation, dependency management, and result synthesis by:
@@ -44,7 +44,7 @@ Hiev-Mind simulates an AI agent network in which:
 
 ## Directory Structure
 ```bash
-hiev-mind/
+hive-mind/
 ├── config.py                # API configuration and default settings
 ├── ExecutionNode.py         # Defines the ExecutionNode class for processing tasks
 ├── structure.py             # Utility for scanning directory structure and text files (optional)
@@ -61,8 +61,8 @@ hiev-mind/
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/yourusername/hiev-mind.git
-   cd hiev-mind
+   git clone https://github.com/yourusername/hive-mind.git
+   cd hive-mind
    ```
 
 2.	Create and Activate a Virtual Environment:
@@ -76,7 +76,7 @@ hiev-mind/
 3.	Install Dependencies:
 
     ```bash
-    # Hiev-Mind requires the OpenAI Python client. Install it using pip
+    # Hive-Mind requires the OpenAI Python client. Install it using pip
     pip install openai
     ```
 

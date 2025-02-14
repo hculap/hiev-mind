@@ -140,6 +140,58 @@ class ManagingNode:
             expected_format = "json"
             return chosen_nodes, expected_format
 
+    def validate_with_node(self, node, task, response, context):
+        """
+        Uses an execution node (via its normal process_task method) to evaluate a previously produced answer.
+        Returns a tuple: (node name, evaluation dict, aggregated average score).
+        """
+        validation_prompt = (
+            "You are an AI evaluator. Your task is to assess the following answer to a given task. "
+            "Evaluate the answer based on the following criteria:\n"
+            "1. Logical Coherence (0-10)\n"
+            "2. Completeness (0-10)\n"
+            "3. Correctness (0-10)\n"
+            "4. Clarity (0-10)\n"
+            "5. Instruction-Following (0-10)\n\n"
+            f"Task: {task}\n"
+            f"Response: {json.dumps(response)}\n"
+            f"Context: {context if context else 'None'}\n\n"
+            "Return your evaluation as RAW JSON (without the word 'json' at the beginning) with the following keys:\n"
+            '{\n'
+            '  "logical_coherence": <number>,\n'
+            '  "completeness": <number>,\n'
+            '  "correctness": <number>,\n'
+            '  "clarity": <number>,\n'
+            '  "instruction_following": <number>,\n'
+            '  "final_verdict": "Accepted" or "Rejected",\n'
+            '  "improvement_suggestions": "<brief feedback>"\n'
+            '}'
+        )
+        print(f"[{node.name}] Validating response for task: '{task}'")
+        try:
+            # Use the node’s standard process_task to perform validation
+            eval_result = node.process_task(validation_prompt, expected_format="json", context=context)
+            avg_score = (
+                eval_result.get("logical_coherence", 0) +
+                eval_result.get("completeness", 0) +
+                eval_result.get("correctness", 0) +
+                eval_result.get("clarity", 0) +
+                eval_result.get("instruction_following", 0)
+            ) / 5
+            return (node.name, eval_result, avg_score)
+        except Exception as e:
+            print(f"[{node.name}] Error during validation: {e}")
+            fallback_evaluation = {
+                "logical_coherence": 0,
+                "completeness": 0,
+                "correctness": 0,
+                "clarity": 0,
+                "instruction_following": 0,
+                "final_verdict": "Rejected",
+                "improvement_suggestions": "Evaluation failed due to an error."
+            }
+            return (node.name, fallback_evaluation, 0)
+
     def process_single_task(self, task_obj, context):
         max_attempts = 3
         threshold = 7  # Acceptance threshold for average validation score
@@ -171,11 +223,12 @@ class ManagingNode:
             validated_results = []
             for node, resp in responses:
                 votes = []
+                # Pick a subset of nodes as validators
                 validators = self.execution_nodes if len(self.execution_nodes) <= VALIDATORS_COUNT else random.sample(self.execution_nodes, VALIDATORS_COUNT)
                 with ThreadPoolExecutor(max_workers=len(validators)) as executor:
                     future_to_validator = {
-                        executor.submit(exec_node.validate_response, task_obj["task"], resp, context): exec_node
-                        for exec_node in self.execution_nodes
+                        executor.submit(self.validate_with_node, validator, task_obj["task"], resp, context): validator
+                        for validator in validators
                     }
                     for future in as_completed(future_to_validator):
                         try:
@@ -186,7 +239,12 @@ class ManagingNode:
                             print(f"[Manager] Validation error for task {task_obj['id']}: {e}")
                             votes.append(0)
                 if votes:
-                    avg_score = sum(votes) / len(votes)
+                    if len(votes) > 2:
+                        sorted_votes = sorted(votes)
+                        trimmed_votes = sorted_votes[1:-1]
+                        avg_score = sum(trimmed_votes) / len(trimmed_votes)
+                    else:
+                        avg_score = sum(votes) / len(votes)
                     validated_results.append((node, resp, avg_score))
                     print(f"[Manager] Agent {node.name} obtained average validation score: {avg_score}")
                     if avg_score > best_avg_score:
@@ -208,8 +266,8 @@ class ManagingNode:
                     validators = self.execution_nodes if len(self.execution_nodes) <= VALIDATORS_COUNT else random.sample(self.execution_nodes, VALIDATORS_COUNT)
                     with ThreadPoolExecutor(max_workers=len(validators)) as executor:
                         future_to_validator = {
-                            executor.submit(exec_node.validate_response, task_obj["task"], improved_resp, context): exec_node
-                            for exec_node in self.execution_nodes
+                            executor.submit(self.validate_with_node, validator, task_obj["task"], improved_resp, context): validator
+                            for validator in validators
                         }
                         for future in as_completed(future_to_validator):
                             try:
@@ -220,7 +278,12 @@ class ManagingNode:
                                 print(f"[Manager] Validation error for improved response for task {task_obj['id']}: {e}")
                                 votes.append(0)
                     if votes:
-                        avg_score = sum(votes) / len(votes)
+                        if len(votes) > 2:
+                            sorted_votes = sorted(votes)
+                            trimmed_votes = sorted_votes[1:-1]
+                            avg_score = sum(trimmed_votes) / len(trimmed_votes)
+                        else:
+                            avg_score = sum(votes) / len(votes)
                         print(f"[Manager] Improved response got average validation score: {avg_score}")
                         if avg_score >= threshold:
                             return node.name, improved_resp, avg_score
@@ -271,6 +334,58 @@ class ManagingNode:
         except Exception as e:
             print(f"[Manager] Failed to analyze additional steps for subtask {subtask_id}: {e}")
             return []
+
+    def validate_with_node(self, node, task, response, context):
+        """
+        Uses an execution node (via its normal process_task method) to evaluate a previously produced answer.
+        Returns a tuple: (node name, evaluation dict, aggregated average score).
+        """
+        validation_prompt = (
+            "You are an AI evaluator. Your task is to assess the following answer to a given task. "
+            "Evaluate the answer based on the following criteria:\n"
+            "1. Logical Coherence (0-10)\n"
+            "2. Completeness (0-10)\n"
+            "3. Correctness (0-10)\n"
+            "4. Clarity (0-10)\n"
+            "5. Instruction-Following (0-10)\n\n"
+            f"Task: {task}\n"
+            f"Response: {json.dumps(response)}\n"
+            f"Context: {context if context else 'None'}\n\n"
+            "Return your evaluation as RAW JSON (without the word 'json' at the beginning) with the following keys:\n"
+            '{\n'
+            '  "logical_coherence": <number>,\n'
+            '  "completeness": <number>,\n'
+            '  "correctness": <number>,\n'
+            '  "clarity": <number>,\n'
+            '  "instruction_following": <number>,\n'
+            '  "final_verdict": "Accepted" or "Rejected",\n'
+            '  "improvement_suggestions": "<brief feedback>"\n'
+            '}'
+        )
+        print(f"[{node.name}] Validating response for task: '{task}'")
+        try:
+            # Use the node’s standard process_task to perform validation
+            eval_result = node.process_task(validation_prompt, expected_format="json", context=context)
+            avg_score = (
+                eval_result.get("logical_coherence", 0) +
+                eval_result.get("completeness", 0) +
+                eval_result.get("correctness", 0) +
+                eval_result.get("clarity", 0) +
+                eval_result.get("instruction_following", 0)
+            ) / 5
+            return (node.name, eval_result, avg_score)
+        except Exception as e:
+            print(f"[{node.name}] Error during validation: {e}")
+            fallback_evaluation = {
+                "logical_coherence": 0,
+                "completeness": 0,
+                "correctness": 0,
+                "clarity": 0,
+                "instruction_following": 0,
+                "final_verdict": "Rejected",
+                "improvement_suggestions": "Evaluation failed due to an error."
+            }
+            return (node.name, fallback_evaluation, 0)
 
     def delegate_tasks(self, subtasks):
         """
